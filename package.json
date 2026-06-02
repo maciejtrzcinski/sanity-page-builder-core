@@ -1,0 +1,94 @@
+{
+  "name": "@maciejtrzcinski/sanity-page-builder-core",
+  "version": "1.0.0",
+  "description": "Tiny, dependency-free typed dispatcher for Sanity page-builder blocks — a renderer registry, a render function, and parity helpers, parameterized by your own block union, context, and node type.",
+  "keywords": [
+    "sanity",
+    "page-builder",
+    "renderer",
+    "registry",
+    "dispatch"
+  ],
+  "license": "MIT",
+  "author": "Maciej Trzciński",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maciejtrzcinski/sanity-page-builder-core.git"
+  },
+  "bugs": {
+    "url": "https://github.com/maciejtrzcinski/sanity-page-builder-core/issues"
+  },
+  "homepage": "https://github.com/maciejtrzcinski/sanity-page-builder-core#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "packageManager": "pnpm@10.4.1",
+  "sideEffects": false,
+  "type": "module",
+  "browserslist": [
+    "defaults and supports es6-module",
+    "maintained node versions"
+  ],
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "pkg-utils build --clean",
+    "watch": "pkg-utils watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "knip": "knip",
+    "test": "vitest run",
+    "prepare": "husky",
+    "prepublishOnly": "npm run build",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "changeset publish"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,cjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.31.0",
+    "@eslint/js": "^10.0.1",
+    "@sanity/pkg-utils": "^10.5.2",
+    "@types/node": "^25.9.1",
+    "eslint": "^10.4.1",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "knip": "^6.15.0",
+    "lint-staged": "^17.0.7",
+    "prettier": "^3.8.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.60.1",
+    "vite": "^8.0.16",
+    "vitest": "^4.1.8"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

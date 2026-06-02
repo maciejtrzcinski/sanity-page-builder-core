@@ -1,0 +1,34 @@
+name: Bug report
+description: Report a problem with the library
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, plus what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: A failing test or a short code snippet that reproduces the issue.
+      render: ts
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: e.g. 1.0.0
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: Node version, package manager, TypeScript version.
+      placeholder: e.g. Node 20, pnpm 10, TypeScript 5.9
+    validations:
+      required: false
