@@ -1,6 +1,6 @@
 {
   "name": "@maciejtrzcinski/sanity-page-builder-core",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Tiny, dependency-free typed dispatcher for Sanity page-builder blocks — a renderer registry, a render function, and parity helpers, parameterized by your own block union, context, and node type.",
   "keywords": [
     "sanity",
