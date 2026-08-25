@@ -31,9 +31,7 @@ import {createPageBuilder} from '@maciejtrzcinski/sanity-page-builder-core'
 import type {PageBuilderBlock} from './types' // your typegen union
 import {MARKETING_RENDERERS, INDEX_RENDERERS} from './renderers'
 
-export type RenderContext = {
-  /* whatever your renderers need */
-}
+export type RenderContext = {/* whatever your renderers need */}
 
 const pageBuilder = createPageBuilder<PageBuilderBlock, RenderContext, ReactNode>({
   renderers: {...MARKETING_RENDERERS, ...INDEX_RENDERERS},
