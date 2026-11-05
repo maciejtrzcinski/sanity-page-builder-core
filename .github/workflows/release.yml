@@ -58,6 +58,11 @@ jobs:
       - run: pnpm exec semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # @semantic-release/npm takes the tarball name from the last line of
+          # `npm pack` stdout. With HUSKY=0 the `prepare` script prints
+          # "HUSKY=0 skip install" with no newline, which gets glued onto that
+          # name. No lifecycle scripts are needed here: `dist/` is built above.
+          npm_config_ignore_scripts: 'true'
 
       # A staged version stays private until a maintainer approves it with 2FA:
       # `npm stage approve <stage-id>`, or Staged Packages on npmjs.com.
