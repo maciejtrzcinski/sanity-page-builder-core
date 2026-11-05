@@ -5,6 +5,16 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.0.0](https://github.com/maciejtrzcinski/sanity-page-builder-core/compare/v1.0.2...v2.0.0) (2026-11-05)
+
+### ⚠ BREAKING CHANGES
+
+* **sections:** createPageBuilderFromSections no longer accepts type arguments. Remove them, e.g. createPageBuilderFromSections([hero, faq]).
+
+### Features
+
+* **sections:** check section exhaustiveness at compile time ([#21](https://github.com/maciejtrzcinski/sanity-page-builder-core/issues/21)) ([9faac0c](https://github.com/maciejtrzcinski/sanity-page-builder-core/commit/9faac0c19268053aab1db8cdf3ed1d405b0acb40))
+
 ## 1.0.2
 
 ### Patch Changes
