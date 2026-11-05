@@ -34,7 +34,7 @@ describe('section modules', () => {
   const hero = defineSection({type: 'hero', query: 'title', render: (b) => `hero:${b.title}`})
   const faq = defineSection({type: 'faq', query: 'items', render: (b) => `faq:${b.items.length}`})
 
-  const pb = createPageBuilderFromSections<Block, Ctx, string>([hero, faq])
+  const pb = createPageBuilderFromSections([hero, faq])
 
   it('builds a working dispatcher from modules', () => {
     expect(pb.renderBlock({_type: 'hero', title: 'X'}, {locale: 'en'})).toBe('hero:X')
@@ -47,7 +47,7 @@ describe('section modules', () => {
   })
 
   it('throws on a duplicate section type', () => {
-    expect(() => createPageBuilderFromSections<Block, Ctx, string>([hero, hero])).toThrowError(
+    expect(() => createPageBuilderFromSections([hero, faq, hero])).toThrowError(
       /Duplicate section module/,
     )
   })

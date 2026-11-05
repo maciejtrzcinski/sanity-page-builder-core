@@ -40,19 +40,24 @@ const pageBuilder = createPageBuilder<PageBuilderBlock, RenderContext, ReactNode
 
 export const renderBlock = pageBuilder.renderBlock
 export const rendererTypes = pageBuilder.rendererTypes
+export const BLOCK_RENDERERS = pageBuilder.renderers // for the parity test below
 ```
 
 ```tsx
-// PageBuilder.tsx
+// PageBuilder.tsx — or use renderPageBuilderBlocks (below), which also skips null blocks
 {
-  blocks.map((block) => <Fragment key={block._key}>{renderBlock(block, context)}</Fragment>)
+  blocks?.map((block) => <Fragment key={block._key}>{renderBlock(block, context)}</Fragment>)
 }
 ```
 
 The `renderers` argument is typed `RendererMap<TBlock, TContext, TNode>` — a
-mapped type over `TBlock['_type']`, so the **compiler enforces exactly one
-correctly-typed renderer per block variant**. Each renderer receives the narrowed
-block (`Extract<TBlock, {_type: K}>`) and your context.
+mapped type over `TBlock['_type']`, so the **compiler requires a correctly-typed
+renderer for every block variant**. Each renderer receives the narrowed block
+(`Extract<TBlock, {_type: K}>`) and your context.
+
+An extra key is a compile error only when it's written in the object literal
+itself. Keys that arrive through a spread (like `...MARKETING_RENDERERS` above)
+are not checked, so use `findOrphanRenderers` (below) to catch those.
 
 ## Parity test
 
@@ -82,6 +87,9 @@ it('a GROQ conditional for every section', () => {
 })
 ```
 
+`findTypesMissingFromQuery` looks for the exact text `_type == "<type>"` in the
+query string: double quotes, with a space on each side of `==`.
+
 ## Deriving the block type from typegen
 
 The concrete block union is project-specific (it comes from your Sanity typegen),
@@ -102,7 +110,8 @@ export type PageBuilderBlock = PageBuilderBlockOf<PageDocQueryResult> // the non
 ## Guardrails (force the architecture)
 
 - **Strict mode** — `createPageBuilder({renderers, strict: true})` throws on a block
-  whose `_type` has no renderer, instead of skipping it. Forces registration.
+  whose `_type` has no renderer, instead of skipping it. Forces registration, and
+  takes precedence over `onMissing`.
 - **Integrity gate** — one assertion that fails loudly if the renderer map, the
   registered types, and the GROQ projection drift apart:
 
@@ -127,6 +136,18 @@ export type PageBuilderBlock = PageBuilderBlockOf<PageDocQueryResult> // the non
   pb.query // → `_type == "heroSection" => { title, subtitle }, …`  (throws on duplicate type)
   ```
 
+  The block union, context, and node type are inferred from the sections — don't
+  pass type arguments. Leaving out a section for any block type in the union is a
+  **compile error** that names the missing `_type`:
+
+  ```ts
+  createPageBuilderFromSections([hero])
+  // compile error: … { readonly 'Missing section module for _type': "faqSection" }
+  ```
+
+  The check is skipped for loosely-typed sections (`AnySectionModule[]`), since
+  their block union is unknown.
+
 ## Rendering the blocks
 
 `renderPageBuilderBlocks` owns the loop + the visual-editing convention
@@ -134,12 +155,14 @@ export type PageBuilderBlock = PageBuilderBlockOf<PageDocQueryResult> // the non
 you pass the values and a `wrap` callback that creates the elements:
 
 ```tsx
+import {createDataAttribute} from 'next-sanity'
+
 {
   renderPageBuilderBlocks(blocks, context, {
     renderBlock,
     documentId,
     pathBase,
-    dataAttr: (p) => dataAttr(p).toString(),
+    dataAttr: (p) => createDataAttribute(p).toString(),
     wrap: (content, {key, id, editAttr}) =>
       editAttr ? (
         <div key={key} id={id} data-sanity={editAttr}>
@@ -156,11 +179,21 @@ you pass the values and a `wrap` callback that creates the elements:
 }
 ```
 
+What it does per block:
+
+- Skips `null`/`undefined` blocks, and blocks whose renderer returns `null` or `undefined`.
+- `key` is the block's `_key`.
+- `id` is the block's `sectionIdField` value (default `'sectionId'`), only when
+  it's a non-blank string.
+- `editAttr` is set only when you pass both `documentId` and `dataAttr`. It is
+  called with `{id: documentId, type: block._type, path: [pathBase, index]}`,
+  where `pathBase` defaults to `'pageBuilder'` and `index` is the block's position
+  in the original array.
+
 ## Icon map
 
-A name → icon resolver with the same registration discipline (sanitize + fallback
-
-- parity), generic over the icon type so it stays React-free:
+A name → icon resolver with the same registration discipline (name cleanup, a
+fallback, and parity helpers), generic over the icon type so it stays React-free:
 
 ```ts
 const icons = createIconMap({icons: SECTION_ICON_COMPONENTS, fallback: Circle})
@@ -170,17 +203,17 @@ assertIconMapIntegrity({icons: SECTION_ICON_COMPONENTS, declaredNames: studioIco
 
 ## API
 
-| Export                                                                                 | Purpose                                                                        |
-| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `createPageBuilder({renderers, strict?, onMissing?})`                                  | Build the dispatcher → `{renderBlock, rendererTypes, renderers, hasRenderer}`. |
-| `createSectionFactory<TBlock,TContext,TNode>()`                                        | Returns a typed `defineSection` for co-located section modules.                |
-| `createPageBuilderFromSections(sections, opts?)`                                       | Build the dispatcher + combined GROQ `query` from section modules.             |
-| `renderPageBuilderBlocks(blocks, context, opts)`                                       | Framework-agnostic render loop + visual-editing convention.                    |
-| `assertPageBuilderIntegrity({renderers, registeredTypes, query?})`                     | One gate that throws on renderer/registry/GROQ drift.                          |
-| `findMissingRenderers` / `findOrphanRenderers` / `findTypesMissingFromQuery`           | Individual parity diffs.                                                       |
-| `createIconMap({icons, fallback?, strict?, sanitize?})`                                | Name → icon resolver.                                                          |
-| `findMissingIcons` / `findOrphanIcons` / `assertIconMapIntegrity` / `sanitizeIconName` | Icon parity + name cleanup.                                                    |
-| `PageBuilderBlockOf` / `PageBuilderBlocksOf`                                           | Extract the block union / array from a typegen query result.                   |
+| Export                                                                                 | Purpose                                                                                                    |
+| -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `createPageBuilder({renderers, strict?, onMissing?})`                                  | Build the dispatcher → `{renderBlock, rendererTypes, renderers, hasRenderer}`.                             |
+| `createSectionFactory<TBlock,TContext,TNode>()`                                        | Returns a typed `defineSection` for co-located section modules.                                            |
+| `createPageBuilderFromSections(sections, {strict?, onMissing?})`                       | The dispatcher plus `query`, `queryByType` and `sections`; a compile error if a block type has no section. |
+| `renderPageBuilderBlocks(blocks, context, opts)`                                       | Framework-agnostic render loop + visual-editing convention.                                                |
+| `assertPageBuilderIntegrity({renderers, registeredTypes, query?})`                     | One gate that throws on renderer/registry/GROQ drift.                                                      |
+| `findMissingRenderers` / `findOrphanRenderers` / `findTypesMissingFromQuery`           | Individual parity diffs.                                                                                   |
+| `createIconMap({icons, fallback?, strict?, sanitize?})`                                | Name → icon resolver → `{resolve, has, names, icons}`.                                                     |
+| `findMissingIcons` / `findOrphanIcons` / `assertIconMapIntegrity` / `sanitizeIconName` | Icon parity + name cleanup.                                                                                |
+| `PageBuilderBlockOf` / `PageBuilderBlocksOf`                                           | Extract the block union / array from a typegen query result.                                               |
 
 ### Types
 
@@ -190,30 +223,39 @@ interface BlockLike {
   _key?: string
 }
 
-type BlockRenderer<TBlock, TContext, TNode> = (block: TBlock, context: TContext) => TNode
+type BlockRenderer<TBlock extends BlockLike, TContext, TNode> = (
+  block: TBlock,
+  context: TContext,
+) => TNode
 
 type RendererMap<TBlock extends BlockLike, TContext, TNode> = {
   [K in TBlock['_type']]: BlockRenderer<Extract<TBlock, {_type: K}>, TContext, TNode>
 }
 
-interface PageBuilder<TBlock, TContext, TNode> {
-  renderers: RendererMap<TBlock, TContext, TNode>
-  rendererTypes: readonly string[]
+interface PageBuilder<TBlock extends BlockLike, TContext, TNode> {
+  readonly renderers: RendererMap<TBlock, TContext, TNode>
+  readonly rendererTypes: readonly string[] // sorted
   hasRenderer(type: string): boolean
   renderBlock(block: TBlock | BlockLike, context: TContext): TNode | null
 }
 ```
 
+Also exported as types: `CreatePageBuilderOptions`, `SectionModule`,
+`AnySectionModule`, `SectionPageBuilder`, `BlockWrapInfo`,
+`RenderPageBuilderBlocksOptions`, `IntegrityInput`, `IconMap`, `IconMapOptions`.
+
 ## What this is NOT
 
 It does not provide section components, normalization, link/image resolution, or
-GROQ — those are project-specific and stay in your app. This is only the typed
-dispatch + parity plumbing.
+GROQ queries (beyond joining the per-section fragments you write) — those are
+project-specific and stay in your app. This is only the typed dispatch + parity
+plumbing.
 
 ## Developing
 
 ```sh
 pnpm install
+pnpm check          # lint + format:check + type-check + knip + test (what CI runs)
 pnpm build          # ESM + CJS + d.ts (pkg-utils)
 pnpm test           # vitest
 pnpm type-check     # tsc --noEmit
