@@ -1,49 +1,84 @@
 name: Release
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
 
-# Cancel an in-flight release if a newer commit lands on main.
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
   cancel-in-progress: false
 
 permissions:
-  contents: write # push the version-bump commit + git tags
-  pull-requests: write # open/update the "Version Packages" PR
-  id-token: write # npm provenance (publishConfig.provenance)
+  contents: read
 
 jobs:
   release:
+    # `main` only, because a manual run can be started on any branch.
+    # `[skip release]` skips commits that cannot produce a release.
+    if: "github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip release]')"
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # create tags, releases, and the changelog commit
+      issues: write # comment on released issues
+      pull-requests: write # comment on released PRs
+      id-token: write # npm provenance
+    env:
+      # No pre-commit hook on the `chore(release)` commit, and none when
+      # `npm pack` runs the `prepare` script.
+      HUSKY: '0'
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v6
 
-      - name: Use Node.js
-        uses: actions/setup-node@v6
+      - uses: actions/setup-node@v6
         with:
+          # `npm stage` needs Node 22.14+.
           node-version: 24
           cache: pnpm
+          # Writes the .npmrc that reads NODE_AUTH_TOKEN in the stage step.
           registry-url: https://registry.npmjs.org
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
 
-      # Opens/updates the "Version Packages" PR when changesets are pending;
-      # runs `pnpm release` (changeset publish) when that PR is merged.
-      - name: Create Release PR or publish
-        uses: changesets/action@v1
-        with:
-          version: pnpm run version
-          publish: pnpm run release
-          commit: 'chore: version packages'
-          title: 'chore: version packages'
+      # lint + format:check + type-check + knip + test
+      - run: pnpm run check
+
+      # semantic-release packs the GitHub release tarball with `npm pack`,
+      # which skips `prepublishOnly`, so `dist/` has to exist before it runs.
+      - run: pnpm run build
+
+      # Versions, tags, writes the changelog and cuts the GitHub release, but
+      # doesn't publish (`npmPublish: false` in .releaserc.json): the npm token
+      # is stage-only, so `npm publish` would be refused.
+      - run: pnpm exec semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # A staged version stays private until a maintainer approves it with 2FA:
+      # `npm stage approve <stage-id>`, or Staged Packages on npmjs.com.
+      - name: Stage on npm
+        env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+        run: |
+          tarball=$(ls .semantic-release/*.tgz 2>/dev/null || true)
+          if [ -z "$tarball" ]; then
+            echo "No new version, nothing to stage."
+            exit 0
+          fi
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          # 1.1.0-beta.3 → beta; a stable version → latest.
+          tag=latest
+          case "$version" in *-*) tag=${version#*-}; tag=${tag%%.*} ;; esac
+
+          # Not `npx npm@…`: @semantic-release/npm puts an `npm` in the tree, so
+          # npx skips the download and runs the runner's bundled npm instead.
+          npm install --global npm@11.19.1
+          npm stage publish "$tarball" --tag "$tag"
+          echo "::notice::$name@$version is staged on the $tag tag. Approve it with 2FA: npm stage approve <stage-id>, or Staged Packages on npmjs.com."

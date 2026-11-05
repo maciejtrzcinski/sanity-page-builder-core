@@ -17,24 +17,24 @@ your staged files automatically.
 
 ## Scripts
 
-| Command             | What it does                              |
-| ------------------- | ----------------------------------------- |
-| `pnpm build`        | Build ESM + CJS + `.d.ts` (via pkg-utils) |
-| `pnpm test`         | Run the test suite (vitest)               |
-| `pnpm type-check`   | Type-check with `tsc --noEmit`            |
-| `pnpm lint`         | Lint with ESLint                          |
-| `pnpm lint:fix`     | Lint and auto-fix                         |
-| `pnpm format`       | Format the repo with Prettier             |
-| `pnpm format:check` | Verify formatting without writing         |
-| `pnpm knip`         | Report unused files, exports, and deps    |
-| `pnpm changeset`    | Record a change for the next release      |
+| Command             | What it does                                   |
+| ------------------- | ---------------------------------------------- |
+| `pnpm build`        | Build ESM + CJS + `.d.ts` (via pkg-utils)      |
+| `pnpm test`         | Run the test suite (vitest)                    |
+| `pnpm type-check`   | Type-check with `tsc --noEmit`                 |
+| `pnpm lint`         | Lint with ESLint                               |
+| `pnpm lint:fix`     | Lint and auto-fix                              |
+| `pnpm format`       | Format the repo with Prettier                  |
+| `pnpm format:check` | Verify formatting without writing              |
+| `pnpm knip`         | Report unused files, exports, and deps         |
+| `pnpm check`        | lint + format:check + type-check + knip + test |
 
 ## Before opening a pull request
 
 Run the same checks CI runs:
 
 ```sh
-pnpm lint && pnpm format:check && pnpm type-check && pnpm knip && pnpm test && pnpm build
+pnpm check && pnpm build
 ```
 
 Please also:
@@ -44,30 +44,37 @@ Please also:
   React/Sanity imports in `src`).
 - Add or update tests for behavior changes.
 - Update the `README.md` when you change public API.
-- Run `pnpm changeset` and commit the generated file so your change lands in the
-  next release's `CHANGELOG.md` (don't edit `CHANGELOG.md` by hand — Changesets
-  owns it).
+- Give the PR a [Conventional Commits] title: it becomes the squash commit on
+  `main`, and that commit decides the next version (see below).
 
-## Releasing
+## Commits and releases
 
-Releases are automated with [Changesets](https://github.com/changesets/changesets)
-and the **Release** GitHub Action — maintainers don't run `npm publish` by hand.
+Releases are automated with [semantic-release], so **commit messages decide
+version numbers**. Use [Conventional Commits] on the subject line:
 
-1. Every PR with a user-facing change includes a changeset (`pnpm changeset`),
-   committed under `.changeset/`.
-2. When changesets land on `main`, the action opens a **"Version Packages"** PR
-   that bumps the version and updates `CHANGELOG.md`.
-3. Merging that PR builds the package and publishes it to npm, then pushes the
-   git tag.
+- `fix: …` → patch release
+- `feat: …` → minor release
+- `feat!: …`, or a `BREAKING CHANGE:` footer → major release
+- `docs: …`, `chore: …`, `ci: …`, `refactor: …`, `test: …` → no release
 
-One-time repo setup: add an `NPM_TOKEN` repository secret (an npm automation
-token with publish rights) for the Release workflow.
+Every push to `main` runs the **Release** workflow: it re-runs `pnpm check`,
+builds, then semantic-release works out whether the new commits warrant a
+version, updates `CHANGELOG.md`, commits it as `chore(release): x.y.z`, tags
+`vx.y.z` and cuts a GitHub release. The workflow then stages that version on
+npm under the `latest` dist-tag. Don't bump `version` in `package.json` or edit
+`CHANGELOG.md` yourself. Put `[skip release]` in a commit message to skip the
+workflow for that push.
 
-## Commit messages
+> **Maintainers:** npm uses [staged publishing] here. `NPM_TOKEN` is a
+> stage-only granular token: CI can stage a version but not publish it, so
+> each release waits on npm until you approve it with 2FA, through
+> `npm stage approve <stage-id>` (`npm stage list` shows the ids) or the
+> Staged Packages tab on npmjs.com. You can swap the token for a stage-only
+> trusted publisher on npmjs.com; the workflow already has `id-token: write`.
 
-Short, imperative summaries are appreciated (e.g. "Add strict-mode guard for
-duplicate section types"). [Conventional Commits](https://www.conventionalcommits.org)
-are welcome but not required.
+[semantic-release]: https://semantic-release.gitbook.io/
+[staged publishing]: https://docs.npmjs.com/staged-publishing/
+[Conventional Commits]: https://www.conventionalcommits.org/
 
 ## Reporting bugs / requesting features
 
