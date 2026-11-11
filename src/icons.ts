@@ -48,10 +48,10 @@ export function createIconMap<TIcon>(options: IconMapOptions<TIcon>): IconMap<TI
   return {
     icons,
     names,
-    has: (name) => name in icons,
+    has: (name) => Object.hasOwn(icons, name),
     resolve(name) {
       const raw = name ? sanitize(name) : ''
-      if (raw && raw in icons) return icons[raw]
+      if (raw && Object.hasOwn(icons, raw)) return icons[raw]
       if (strict) {
         throw new Error(`[page-builder] No icon registered for name: "${name ?? ''}"`)
       }

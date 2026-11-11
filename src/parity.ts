@@ -11,7 +11,7 @@ export function findMissingRenderers(
   registeredTypes: Iterable<string>,
   renderers: Record<string, unknown>,
 ): string[] {
-  return [...registeredTypes].filter((type) => !(type in renderers))
+  return [...registeredTypes].filter((type) => !Object.hasOwn(renderers, type))
 }
 
 /** Renderer keys that are not in `registeredTypes` (orphans / typos / removed). */
