@@ -61,9 +61,10 @@ export function createPageBuilder<TBlock extends BlockLike, TContext = unknown, 
   return {
     renderers,
     rendererTypes,
-    hasRenderer: (type) => type in renderers,
+    hasRenderer: (type) => Object.hasOwn(map, type),
     renderBlock(block, context) {
-      const renderer = map[block._type]
+      // Own keys only: an inherited name like `constructor` is not a renderer.
+      const renderer = Object.hasOwn(map, block._type) ? map[block._type] : undefined
       if (!renderer) {
         if (strict) {
           throw new Error(

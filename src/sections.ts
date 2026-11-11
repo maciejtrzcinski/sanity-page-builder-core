@@ -151,7 +151,7 @@ export function createPageBuilderFromSections<const TSections extends AnySection
   const duplicates: string[] = []
 
   for (const section of sections) {
-    if (section.type in renderers) duplicates.push(section.type)
+    if (Object.hasOwn(renderers, section.type)) duplicates.push(section.type)
     renderers[section.type] = section.render
     if (section.query) queryByType[section.type] = section.query
   }
