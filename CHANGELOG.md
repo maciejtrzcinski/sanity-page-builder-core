@@ -5,6 +5,12 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.0.1](https://github.com/maciejtrzcinski/sanity-page-builder-core/compare/v2.0.0...v2.0.1) (2026-11-11)
+
+### Bug Fixes
+
+* ignore names inherited from Object.prototype in key lookups ([#23](https://github.com/maciejtrzcinski/sanity-page-builder-core/issues/23)) ([1f5562a](https://github.com/maciejtrzcinski/sanity-page-builder-core/commit/1f5562af54dfdbd15f83838d9bd7f09e21330dbf))
+
 ## [2.0.0](https://github.com/maciejtrzcinski/sanity-page-builder-core/compare/v1.0.2...v2.0.0) (2026-11-05)
 
 ### ⚠ BREAKING CHANGES
